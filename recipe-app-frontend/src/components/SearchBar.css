@@ -1,0 +1,25 @@
+.search-bar {
+  display: flex;
+  margin: 1rem 0;
+  position: relative;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.search-bar .clear-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #ff6f61;
+  font-size: 1rem;
+  cursor: pointer;
+}
