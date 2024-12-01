@@ -1,0 +1,6 @@
+recipe-app-frontend/node_modules
+recipe-app-frontend/build
+recipe-app-frontend/.env
+
+recipe-app-backend/node_modules
+recipe-app-backend/.env
