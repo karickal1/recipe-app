@@ -10,7 +10,7 @@ const RecipeCard = ({ recipe, isFavorite, onToggleFavorite, onRecipeClick }) => 
       <button
         className={`favorite-button ${isFavorite ? "favorited" : ""}`}
         onClick={(e) => {
-          e.stopPropagation(); // Prevents triggering the onClick for the card
+          e.stopPropagation(); // Prevents the card's onClick event from being triggered
           onToggleFavorite();
         }}
       >

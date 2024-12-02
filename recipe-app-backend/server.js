@@ -1,117 +1,201 @@
+// Updated server.js
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { PrismaClient } = require('@prisma/client');
 
 const app = express();
+const prisma = new PrismaClient();
 const PORT = 5001;
 
+// Secret key for JWT
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// Middleware setup
 app.use(cors());
 app.use(bodyParser.json());
+
+// Middleware to authenticate JWT tokens
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid token' });
+    }
+    req.user = user;
+    next();
+  });
+};
 
 // Basic route for testing
 app.get("/", (req, res) => {
   res.send("Welcome to the Recipe App API!");
 });
 
+// Signup Route
+app.post('/signup', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Normalize email to lowercase
+    const emailNormalized = email.toLowerCase();
+    console.log("Attempting to create user with email:", emailNormalized);
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({ where: { email: emailNormalized } });
+    console.log("Existing user found:", existingUser);
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
+    const user = await prisma.user.create({
+      data: {
+        email: emailNormalized,
+        password: hashedPassword,
+      },
+    });
+
+    console.log("User created successfully:", user);
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
+    res.status(201).json({ message: 'User created successfully', token });
+  } catch (error) {
+    console.error('Error during signup:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Login Route
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Normalize email to lowercase
+    const emailNormalized = email.toLowerCase();
+
+    console.log("Attempting to log in user with email:", emailNormalized);
+
+    // Find user by email
+    const user = await prisma.user.findUnique({ where: { email: emailNormalized } });
+    console.log("User found during login:", user);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Compare passwords
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all recipes
+app.get("/recipes", async (req, res) => {
+  try {
+    const recipes = await prisma.recipe.findMany();
+    res.json(recipes);
+  } catch (error) {
+    console.error('Error fetching recipes:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create a new recipe (requires authentication)
+app.post("/recipes", authenticateToken, async (req, res) => {
+  const { title, description } = req.body;
+
+  try {
+    const recipe = await prisma.recipe.create({
+      data: {
+        title,
+        description,
+      },
+    });
+    res.status(201).json(recipe);
+  } catch (error) {
+    console.error('Error creating recipe:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add or remove a favorite recipe (toggle, requires authentication)
+app.post('/favorites/toggle', authenticateToken, async (req, res) => {
+  const { recipeId } = req.body;
+  const userId = req.user.userId;
+
+  try {
+    // Check if the recipe is already in the user's favorites
+    const existingFavorite = await prisma.favorite.findFirst({
+      where: {
+        userId: userId,
+        recipeId: recipeId,
+      },
+    });
+
+    if (existingFavorite) {
+      // If the favorite exists, remove it
+      await prisma.favorite.delete({
+        where: {
+          id: existingFavorite.id,
+        },
+      });
+      return res.json({ message: 'Favorite removed', favorite: false });
+    } else {
+      // If it does not exist, add it as a favorite
+      const newFavorite = await prisma.favorite.create({
+        data: {
+          userId,
+          recipeId,
+        },
+      });
+      return res.status(201).json({ message: 'Favorite added', favorite: true });
+    }
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Fetch user's favorite recipes (requires authentication)
+app.get('/favorites', authenticateToken, async (req, res) => {
+  const userId = req.user.userId;
+
+  try {
+    const favorites = await prisma.favorite.findMany({
+      where: { userId },
+      include: { recipe: true },
+    });
+    res.json(favorites);
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    res.status(500).json({ error: 'Unable to fetch favorites' });
+  }
+});
+
+// Server listen
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-// In-memory database for recipes
-let recipes = [
-  { id: 1, title: "Pasta", description: "A delicious pasta dish." },
-  { id: 2, title: "Salad", description: "A healthy salad." },
-];
-
-// Get all recipes
-app.get("/recipes", (req, res) => {
-  res.json(recipes);
-});
-
-// Get a single recipe by ID
-app.get("/recipes/:id", (req, res) => {
-  const recipe = recipes.find((r) => r.id === parseInt(req.params.id));
-  if (recipe) {
-    res.json(recipe);
-  } else {
-    res.status(404).json({ message: "Recipe not found" });
-  }
-});
-
-// Create a new recipe
-app.post("/recipes", (req, res) => {
-  const newRecipe = { id: recipes.length + 1, ...req.body };
-  recipes.push(newRecipe);
-  res.status(201).json(newRecipe);
-});
-
-// Update a recipe by ID
-app.put("/recipes/:id", (req, res) => {
-  const recipe = recipes.find((r) => r.id === parseInt(req.params.id));
-  if (recipe) {
-    Object.assign(recipe, req.body);
-    res.json(recipe);
-  } else {
-    res.status(404).json({ message: "Recipe not found" });
-  }
-});
-
-// Delete a recipe by ID
-app.delete("/recipes/:id", (req, res) => {
-  const index = recipes.findIndex((r) => r.id === parseInt(req.params.id));
-  if (index !== -1) {
-    recipes.splice(index, 1);
-    res.status(204).send();
-  } else {
-    res.status(404).json({ message: "Recipe not found" });
-  }
-});
-// In-memory database for users
-let users = [
-    { id: 1, name: "John Doe", email: "john@example.com" },
-    { id: 2, name: "Jane Smith", email: "jane@example.com" },
-  ];
-  
-  // Get all users
-  app.get("/users", (req, res) => {
-    res.json(users);
-  });
-  
-  // Get a single user by ID
-  app.get("/users/:id", (req, res) => {
-    const user = users.find((u) => u.id === parseInt(req.params.id));
-    if (user) {
-      res.json(user);
-    } else {
-      res.status(404).json({ message: "User not found" });
-    }
-  });
-  
-  // Create a new user
-  app.post("/users", (req, res) => {
-    const newUser = { id: users.length + 1, ...req.body };
-    users.push(newUser);
-    res.status(201).json(newUser);
-  });
-  
-  // Update a user by ID
-  app.put("/users/:id", (req, res) => {
-    const user = users.find((u) => u.id === parseInt(req.params.id));
-    if (user) {
-      Object.assign(user, req.body);
-      res.json(user);
-    } else {
-      res.status(404).json({ message: "User not found" });
-    }
-  });
-  
-  // Delete a user by ID
-  app.delete("/users/:id", (req, res) => {
-    const index = users.findIndex((u) => u.id === parseInt(req.params.id));
-    if (index !== -1) {
-      users.splice(index, 1);
-      res.status(204).send();
-    } else {
-      res.status(404).json({ message: "User not found" });
-    }
-  });
-  

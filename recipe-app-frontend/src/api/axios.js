@@ -8,4 +8,13 @@ const axiosInstance = axios.create({
   },
 });
 
+// API calls for user authentication
+export const signup = (formData) => axiosInstance.post('/signup', formData);
+export const login = (formData) => axiosInstance.post('/login', formData);
+
+// API calls for managing favorites
+export const addFavorite = (recipeId) => axiosInstance.post('/favorites', { recipeId });
+export const getFavorites = () => axiosInstance.get('/favorites');
+export const removeFavorite = (recipeId) => axiosInstance.delete(`/favorites/${recipeId}`);
+
 export default axiosInstance;

@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import axios from "axios";
 import NavBar from "./components/NavBar";
 import RecipeCard from "./components/RecipeCard";
 import RecipeModal from "./components/RecipeModal";
 import SearchBar from "./components/SearchBar";
+import Login from "./components/Login";
+import Signup from "./components/Signup";
+import { AuthContext } from "./AuthContext";
 import "./App.css";
 
 const App = () => {
@@ -16,6 +20,8 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
+
+  const { user } = useContext(AuthContext);
 
   useEffect(() => {
     const fetchRecipes = async () => {
@@ -101,36 +107,54 @@ const App = () => {
   };
 
   const handleHomeClick = () => {
+    setActiveTab("all");
     window.location.reload();
   };
 
   return (
-    <div className="app">
-      <NavBar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onHomeClick={handleHomeClick}
-      />
-      <div className="content">
-        {loading ? (
-          <p>Loading recipes...</p>
-        ) : (
-          <>
-            <SearchBar onSearch={handleSearch} />
-            {activeTab === "favorites" && favorites.length === 0 && (
-              <p>You have no favorite recipes yet.</p>
-            )}
-            {renderRecipes()}
-          </>
-        )}
-        {selectedRecipe && (
-          <RecipeModal
-            recipe={selectedRecipe}
-            onClose={() => setSelectedRecipe(null)}
-          />
-        )}
+    <Router>
+      <div className="app">
+        <NavBar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onHomeClick={handleHomeClick}
+        />
+        <div className="content">
+          <Routes>
+            <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+            <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
+            <Route path="/favorites" element={
+              <>
+                {favorites.length === 0 ? (
+                  <p>You have no favorite recipes yet.</p>
+                ) : (
+                  renderRecipes()
+                )}
+              </>
+            } />
+            <Route path="/" element={
+              loading ? (
+                <p>Loading recipes...</p>
+              ) : (
+                <>
+                  <SearchBar onSearch={handleSearch} />
+                  {activeTab === "favorites" && favorites.length === 0 && (
+                    <p>You have no favorite recipes yet.</p>
+                  )}
+                  {renderRecipes()}
+                </>
+              )
+            } />
+          </Routes>
+          {selectedRecipe && (
+            <RecipeModal
+              recipe={selectedRecipe}
+              onClose={() => setSelectedRecipe(null)}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </Router>
   );
 };
 

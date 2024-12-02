@@ -1,0 +1,15 @@
+# Handle line endings automatically for text files
+* text=auto
+
+# Explicitly declare the line endings for files (LF)
+*.sh text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.prisma text eol=lf
+*.toml text eol=lf
+
+# Windows executables should use CRLF
+*.bat text eol=crlf
