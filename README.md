@@ -52,7 +52,7 @@ The app consists of a backend built with Node.js, Express, and Prisma, and a fro
    ```
 
 ## Link to Presentation Video
-[Watch the Presentation](https://your-video-link.com)
+[Watch the Presentation](https://youtu.be/zZzt95_bgm4)
 
 ## How to Use the Application
 1. **Sign up or Log in** to access all features.
@@ -60,11 +60,17 @@ The app consists of a backend built with Node.js, Express, and Prisma, and a fro
 3. Use the **Favorites** button in the navigation bar to access your saved recipes.
 
 ## Screenshots
-- Add a few screenshots here showing different parts of your application, like:
-  - Homepage
-  - Signup/Login Page
-  - Recipe Page
-  - Favorites Page
+### Homepage
+![Homepage Screenshot](screenshots/homepage.png)
+
+### Signup/Login Page
+![Signup/Login Screenshot](screenshots/signup-login.png)
+
+### Recipe Page
+![Recipe Page Screenshot](screenshots/recipe-page.png)
+
+### Favorites Page
+![Favorites Page Screenshot](screenshots/favorites-page.png)
 
 ## Authors
 - Jonathan Karickal, Pooja Yadav, Jua Augustin, Meagan Leung
